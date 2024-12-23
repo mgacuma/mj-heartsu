@@ -1,13 +1,13 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { db } from "../config/firebase";
 import { doc, updateDoc } from "firebase/firestore";
 import { Heart, Loader2 } from "lucide-react";
 import { useDocumentData } from "react-firebase-hooks/firestore";
 import { Button } from "@/components/ui/button";
-
-interface Hearts {
-  count: number;
-}
+import ggbr1 from "../assets/ggbr-1.jpeg";
+import ggbr2 from "../assets/ggbr-2.jpeg";
+import ggbr3 from "../assets/ggbr-3.jpeg";
+import ggbr4 from "../assets/ggbr-4.jpeg";
 
 interface FloatingContent {
   id: number;
@@ -16,17 +16,18 @@ interface FloatingContent {
   imageIndex: number;
 }
 
-const dogImages = [
-  "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/FF7A09B3-D948-43DB-8974-4510434F9AF9_1_102_o-q2jtM3I4c7KjQhocrW54HODQCAFZZR.jpeg",
-  "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/FA67AA1E-C487-43A8-AF80-99B7EDC48108_1_102_o-4AMSF1XbwjTKf4HKMmWe4b2aEQ2g49.jpeg",
-  "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/023A6480-43EE-4A73-BED1-A975DB6B16C5_1_102_o-OFFCyoXQZ8JTmAUYV5uZJR3r9bgSBf.jpeg",
-  "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/61F5E64E-07C9-49F3-8432-17C142FD93E3_1_102_o-nFn8Hb8r45l24F2Ao1SKGCDKGSy4N0.jpeg",
-];
+const dogImages = [ggbr1, ggbr2, ggbr3, ggbr4];
 
 const HeartCounter: React.FC = () => {
   const [hearts, loading, error] = useDocumentData(doc(db, "babu", "hearts"));
   const [floatingContent, setFloatingContent] = useState<FloatingContent[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (hearts) {
+      document.title = `${hearts.count} | I love you babu `;
+    }
+  }, [hearts]);
 
   const getRandomPosition = () => {
     if (!containerRef.current) return { x: 0, y: 0 };
