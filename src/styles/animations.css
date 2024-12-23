@@ -1,0 +1,18 @@
+@keyframes float-and-fade {
+  0% {
+    opacity: 1;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1) translateY(-20px);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1) translateY(-40px);
+  }
+}
+
+.animate-float-and-fade {
+  animation: float-and-fade 1.5s ease-out forwards;
+}
