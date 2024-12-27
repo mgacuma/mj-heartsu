@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { db } from "../config/firebase";
 import { doc, updateDoc } from "firebase/firestore";
-import { Heart, Loader2 } from "lucide-react";
+import { Heart, Loader2, Bell } from "lucide-react";
 import { useDocumentData } from "react-firebase-hooks/firestore";
 import { Button } from "@/components/ui/button";
 import ggbr1 from "../assets/ggbr-1.jpeg";
@@ -22,12 +22,41 @@ const HeartCounter: React.FC = () => {
   const [hearts, loading, error] = useDocumentData(doc(db, "babu", "hearts"));
   const [floatingContent, setFloatingContent] = useState<FloatingContent[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const previousCountRef = useRef<number | null>(null);
+  const [notificationPermission, setNotificationPermission] =
+    useState<NotificationPermission>("default");
+  const localUpdateRef = useRef(false);
+
+  useEffect(() => {
+    if ("Notification" in window) {
+      setNotificationPermission(Notification.permission);
+    }
+  }, []);
 
   useEffect(() => {
     if (hearts) {
-      document.title = `${hearts.count} | I love you babu `;
+      document.title = `I love you babu | ${hearts.count}`;
+
+      if (
+        previousCountRef.current !== null &&
+        hearts.count > previousCountRef.current &&
+        containerRef.current &&
+        !localUpdateRef.current
+      ) {
+        addFloatingContent();
+
+        if (notificationPermission === "granted") {
+          sendNotification(
+            "New Love from Babu!",
+            `Heart count is now ${hearts.count}`
+          );
+        }
+      }
+
+      previousCountRef.current = hearts.count;
+      localUpdateRef.current = false;
     }
-  }, [hearts]);
+  }, [hearts, notificationPermission]);
 
   const getRandomPosition = () => {
     if (!containerRef.current) return { x: 0, y: 0 };
@@ -40,29 +69,76 @@ const HeartCounter: React.FC = () => {
     };
   };
 
+  const addFloatingContent = () => {
+    const { x, y } = getRandomPosition();
+    const newFloatingContent: FloatingContent = {
+      id: Date.now(),
+      x,
+      y,
+      imageIndex: Math.floor(Math.random() * dogImages.length),
+    };
+
+    setFloatingContent((prev) => [...prev, newFloatingContent]);
+
+    setTimeout(() => {
+      setFloatingContent((prev) =>
+        prev.filter((content) => content.id !== newFloatingContent.id)
+      );
+    }, 1500);
+  };
+
   const incrementHeart = useCallback(async () => {
     if (hearts && containerRef.current) {
+      localUpdateRef.current = true;
       await updateDoc(doc(db, "babu", "hearts"), {
         count: hearts.count + 1,
       });
-
-      const { x, y } = getRandomPosition();
-      const newFloatingContent: FloatingContent = {
-        id: Date.now(),
-        x,
-        y,
-        imageIndex: Math.floor(Math.random() * dogImages.length),
-      };
-
-      setFloatingContent((prev) => [...prev, newFloatingContent]);
-
-      setTimeout(() => {
-        setFloatingContent((prev) =>
-          prev.filter((content) => content.id !== newFloatingContent.id)
-        );
-      }, 1500);
+      addFloatingContent();
     }
   }, [hearts]);
+
+  const requestNotificationPermission = async () => {
+    if ("Notification" in window) {
+      try {
+        const permission = await Notification.requestPermission();
+        setNotificationPermission(permission);
+        if (permission === "granted") {
+          await registerServiceWorker();
+        }
+      } catch (error) {
+        console.error("Error requesting notification permission:", error);
+      }
+    }
+  };
+
+  const registerServiceWorker = async () => {
+    if ("serviceWorker" in navigator) {
+      try {
+        const registration = await navigator.serviceWorker.register(
+          "/mj-heartsu/sw.js",
+          { scope: "/mj-heartsu/" }
+        );
+        console.log(
+          "Service Worker registered with scope:",
+          registration.scope
+        );
+      } catch (error) {
+        console.error("Service Worker registration failed:", error);
+      }
+    }
+  };
+
+  const sendNotification = (title: string, body: string) => {
+    if ("serviceWorker" in navigator && "PushManager" in window) {
+      navigator.serviceWorker.ready.then((registration) => {
+        registration.showNotification(title, {
+          body: body,
+          icon: "/mj-heartsu/ggbr-favicon.jpeg",
+          badge: "/mj-heartsu/ggbr-favicon.jpeg",
+        });
+      });
+    }
+  };
 
   return (
     <div
@@ -90,7 +166,7 @@ const HeartCounter: React.FC = () => {
           ) : null}
         </div>
       </div>
-      <div className="max-w-2xl text-center px-4 sm:px-6 lg:px-0">
+      <div className="max-w-2xl text-center px-4 sm:px-6 lg:px-0 mb-8">
         <h2 className="text-2xl font-semibold mb-2">Babu's Haiku</h2>
         <p className="text-gray-600 italic">
           Babu my love
@@ -119,6 +195,17 @@ const HeartCounter: React.FC = () => {
           </p>
         </div>
       ))}
+      {notificationPermission !== "granted" && (
+        <div className="flex justify-center">
+          <Button
+            onClick={requestNotificationPermission}
+            className="flex items-center justify-center"
+          >
+            <Bell className="w-4 h-4 mr-2" />
+            Enable Notifications
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,5 +1,3 @@
-import "./index.css";
-import "./styles/animations.css";
 import HeartCounter from "./components/HeartCounter";
 
 function App() {
